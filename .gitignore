@@ -207,8 +207,6 @@ marimo/_lsp/
 __marimo__/
 
 # Storage
-storage
-storage/*
 storage/uploads/*
 storage/outputs/*
 !storage/uploads/.gitkeep
