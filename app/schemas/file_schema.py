@@ -8,6 +8,6 @@ class FileUploadResponse(BaseModel):
     upload_time: datetime
 
 class FileListResponse(BaseModel):
-    files: list[FileUploadResponse]
+    files: list[dict]
     total: int
 
