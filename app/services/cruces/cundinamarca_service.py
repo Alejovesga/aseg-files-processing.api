@@ -107,44 +107,12 @@ def ejecutar_cruce(
 
     # ── Archivos departamentales ──────────────────────────────────────────────
     df_discordantes = df_combinado.filter(pl.col("discordancia_municipio") == "SÍ")
-    df_no_sisben    = df_todos.filter(pl.col("num_documento").is_null())
+    df_no_sisben    = df_todos.filter(pl.col("numero_documento").is_null())
 
     df_combinado.write_csv(dir_salida / "Cruce_Cundinamarca.csv")
     df_discordantes.write_csv(dir_salida / "Discordantes_Cundinamarca.csv")
     df_sisben.write_csv(dir_salida / "Sisben_Cundinamarca.csv")
     df_no_sisben.write_csv(dir_salida / "NoSisben_Cundinamarca.csv")
-
-    # ── Archivos por provincia ────────────────────────────────────────────────
-    resumen = []
-
-    for provincia in PROVINCIAS:
-        carpeta = dir_salida / provincia.replace(" ", "_")
-        carpeta.mkdir(parents=True, exist_ok=True)
-
-        df_cruce_p  = df_combinado.filter(pl.col("provincia_afiliacion") == provincia)
-        df_sisben_p = df_sisben.filter(pl.col("provincia_sisben") == provincia)
-        df_nosisb_p = df_todos.filter(
-            (pl.col("provincia_afiliacion") == provincia) & pl.col("num_documento").is_null()
-        )
-        df_disc_p   = df_cruce_p.filter(pl.col("discordancia_municipio") == "SÍ")
-
-        nombre = provincia.replace(" ", "_")
-        df_cruce_p.write_csv(carpeta / f"Cruce_{nombre}.csv")
-        df_sisben_p.write_csv(carpeta / f"Sisben_{nombre}.csv")
-        df_nosisb_p.write_csv(carpeta / f"NoSisben_{nombre}.csv")
-        df_disc_p.write_csv(carpeta / f"Discordantes_{nombre}.csv")
-
-        total_cruce = len(df_cruce_p)
-        resumen.append({
-            "Provincia":       provincia,
-            "Cruce":           total_cruce,
-            "Sisbén":          len(df_sisben_p),
-            "Sin Sisbén":      len(df_nosisb_p),
-            "Discordantes":    len(df_disc_p),
-            "% Discordantes":  f"{(len(df_disc_p)/total_cruce*100):.1f}%" if total_cruce else "0.0%",
-        })
-
-    pl.DataFrame(resumen).write_csv(dir_salida / "Resumen_Cundinamarca.csv")
 
     # ── Empaquetar en ZIP ─────────────────────────────────────────────────────
     zip_path = dir_salida / "Cundinamarca_resultado.zip"

@@ -62,11 +62,13 @@ def _construir_municipio(df: pl.DataFrame) -> pl.DataFrame:
 def procesar_subsidiado(input_path: Path, output_path: Path) -> Path:
     df = pl.read_csv(
         input_path,
-        separator=',',
+        separator=",",
         has_header=False,
-        infer_schema_length=0,
         encoding="latin1",
-        truncate_ragged_lines=True,
+        quote_char='"',
+        ignore_errors=True,
+        low_memory=False,
+        infer_schema_length=0,
     )
     df = _asignar_columnas(df, COLS_SUBSIDIADO)
     df = _construir_municipio(df)
@@ -77,11 +79,13 @@ def procesar_subsidiado(input_path: Path, output_path: Path) -> Path:
 def procesar_contributivo(input_path: Path, output_path: Path) -> Path:
     df = pl.read_csv(
         input_path,
-        separator=',',
+        separator=",",
         has_header=False,
-        infer_schema_length=0,
         encoding="latin1",
-        truncate_ragged_lines=True,
+        quote_char='"',
+        ignore_errors=True,
+        low_memory=False,
+        infer_schema_length=0,
     )
     df = _asignar_columnas(df, COLS_CONTRIBUTIVO)
     df = _construir_municipio(df)

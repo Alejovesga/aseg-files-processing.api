@@ -6,22 +6,21 @@ COLUMNAS = [
     "Dir_vivienda", "pri_apellido", "seg_apellido", "pri_nombre", "seg_nombre",
     "sexo_persona", "tip_documento", "num_documento", "num_tel_contacto",
     "fec_nacimiento", "edad_calculada", "cod_mpio_documento",
-    "cod_dpto_documento", "cod_pais_documento", "Grupo", "Nivel", "Clasificacion"
+    "cod_dpto_documento", "cod_pais_documento", "Grupo", "Nivel", " Clasificacion"
 ]
 
 def procesar_sisben(input_path: Path, output_path: Path) -> Path:
     df = pl.read_csv(
         input_path,
         separator=';',
+        has_header=True,
+        encoding='utf8-lossy',
+        quote_char='"',
+        ignore_errors=True,
         infer_schema_length=0,
         truncate_ragged_lines=True,
+        low_memory=False
     )
-
-    df = df[:, 1:]
-
-    nuevos_nombres = df.columns[1:]
-    df = df[1:]
-    df.columns = nuevos_nombres
 
     df = df.select(COLUMNAS)
 

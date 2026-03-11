@@ -11,3 +11,8 @@ class FileListResponse(BaseModel):
     files: list[dict]
     total: int
 
+class CundinamarcaProcessRequest(BaseModel):
+    file_id_sisben: str
+    file_id_contributivo: str
+    file_id_subsidiado: str
+
