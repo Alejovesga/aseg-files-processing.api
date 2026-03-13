@@ -1,4 +1,4 @@
-import polars as pl
+import pandas as pd
 from pathlib import Path
 
 COLUMNAS = [
@@ -10,20 +10,17 @@ COLUMNAS = [
 ]
 
 def procesar_sisben(input_path: Path, output_path: Path) -> Path:
-    df = pl.read_csv(
+    df = pd.read_csv(
         input_path,
-        separator=';',
-        has_header=True,
-        encoding='utf8-lossy',
-        quote_char='"',
-        ignore_errors=True,
-        infer_schema_length=0,
-        truncate_ragged_lines=True,
-        low_memory=False
+        sep=';',
+        skipinitialspace=True,
+        encoding='utf-8',
+        quotechar='"',
+        on_bad_lines='warn',
+        low_memory=False,
     )
 
-    df = df.select(COLUMNAS)
-
-    df.write_csv(output_path)
+    df = df[COLUMNAS].copy()
+    df.to_csv(output_path, index=False)
 
     return output_path

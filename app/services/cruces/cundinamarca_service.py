@@ -1,5 +1,5 @@
 import zipfile
-import polars as pl
+import pandas as pd
 from pathlib import Path
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -40,74 +40,47 @@ def ejecutar_cruce(
     dir_salida.mkdir(parents=True, exist_ok=True)
 
     # ── Carga ────────────────────────────────────────────────────────────────
-    df_sisben = pl.read_csv(path_sisben, infer_schema_length=0)
-    df_sisben = df_sisben.with_columns(
-        pl.col("cod_mpio").cast(pl.Int64, strict=False)
-    )
+    df_sisben = pd.read_csv(path_sisben)
+    df_sisben['cod_mpio'] = df_sisben['cod_mpio'].astype("Int64")
 
     # Asignar provincia al Sisbén
-    df_sisben = df_sisben.with_columns(
-        pl.col("cod_mpio")
-          .replace(COD_A_PROVINCIA, default="Sin clasificar")
-          .alias("provincia_sisben")
-    )
+    df_sisben['provincia_sisben'] = df_sisben['cod_mpio'].map(COD_A_PROVINCIA).fillna("Sin clasificar")
 
-    df_contributivo = pl.read_csv(path_contributivo, infer_schema_length=0)
-    df_subsidiado   = pl.read_csv(path_subsidiado,   infer_schema_length=0)
+    df_contributivo = pd.read_csv(path_contributivo, dtype=str)
+    df_subsidiado   = pd.read_csv(path_subsidiado,   dtype=str)
 
-    df_contributivo = df_contributivo.with_columns(pl.lit("Contributivo").alias("Regimen"))
-    df_subsidiado   = df_subsidiado.with_columns(pl.lit("Subsidiado").alias("Regimen"))
-
-    # Unir contributivo + subsidiado
-    df_maestro = pl.concat([df_contributivo, df_subsidiado], how="diagonal")
+    df_contributivo["Regimen"] = "Contributivo"
+    df_subsidiado["Regimen"] = "Subsidiado"
+    df_maestro = pd.concat([df_contributivo, df_subsidiado], ignore_index=True)
 
     # ── Cruces ───────────────────────────────────────────────────────────────
 
     # Inner join: afiliados que SÍ están en Sisbén
-    df_combinado = df_maestro.join(
+    df_combinado = df_maestro.merge(
         df_sisben,
-        left_on="numero_documento",
-        right_on="num_documento",
-        how="inner"
+        left_on='numero_documento',
+        right_on='num_documento',
+        how='inner'
     )
-    df_combinado = df_combinado.with_columns(
-        pl.col("municipio_afiliacion").cast(pl.Int64, strict=False)
-    )
-    df_combinado = df_combinado.with_columns(
-        pl.col("municipio_afiliacion")
-          .replace(COD_A_PROVINCIA, default="Sin clasificar")
-          .alias("provincia_afiliacion")
-    )
+    df_combinado['municipio_afiliacion'] = df_combinado['municipio_afiliacion'].astype(float).astype("Int64")
+
+    df_combinado['provincia_afiliacion'] = df_combinado['municipio_afiliacion'].map(COD_A_PROVINCIA).fillna("Sin clasificar")
 
     # Detectar discordancia de municipio
-    df_combinado = df_combinado.with_columns(
-        pl.when(
-            pl.col("municipio_afiliacion").cast(str) != pl.col("cod_mpio_right").cast(str)
-        )
-        .then(pl.lit("SÍ"))
-        .otherwise(pl.lit("NO"))
-        .alias("discordancia_municipio")
-    )
+    df_combinado['discordancia_municipio'] = (
+            df_combinado['municipio_afiliacion'].astype(str) != df_combinado['cod_mpio_y'].astype(str)
+    ).map({True: "SÍ", False: "NO"})
 
     # Left join: todos los afiliados (con y sin Sisbén)
-    df_todos = df_maestro.join(
-        df_sisben,
-        left_on="numero_documento",
-        right_on="num_documento",
-        how="left"
+    df_todos = df_maestro.merge(
+        df_sisben, left_on='numero_documento', right_on='num_documento', how='left'
     )
-    df_todos = df_todos.with_columns(
-        pl.col("municipio_afiliacion").cast(pl.Int64, strict=False)
-    )
-    df_todos = df_todos.with_columns(
-        pl.col("municipio_afiliacion")
-          .replace(COD_A_PROVINCIA, default="Sin clasificar")
-          .alias("provincia_afiliacion")
-    )
+    df_todos['municipio_afiliacion'] = df_todos['municipio_afiliacion'].astype(float).astype("Int64")
+    df_todos['provincia_afiliacion'] = df_todos['municipio_afiliacion'].map(COD_A_PROVINCIA).fillna("Sin clasificar")
 
     # ── Archivos departamentales ──────────────────────────────────────────────
-    df_discordantes = df_combinado.filter(pl.col("discordancia_municipio") == "SÍ")
-    df_no_sisben    = df_todos.filter(pl.col("numero_documento").is_null())
+    df_discordantes = df_combinado[df_combinado['discordancia_municipio'] == 'SÍ']
+    df_no_sisben = df_todos[df_todos['num_documento'].isna()].copy()
 
     df_combinado.write_csv(dir_salida / "Cruce_Cundinamarca.csv")
     df_discordantes.write_csv(dir_salida / "Discordantes_Cundinamarca.csv")

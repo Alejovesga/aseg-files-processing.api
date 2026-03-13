@@ -1,4 +1,4 @@
-import polars as pl
+import pandas as pd
 from pathlib import Path
 
 COLS_SUBSIDIADO = [
@@ -28,66 +28,62 @@ COLS_CONTRIBUTIVO = [
     "ficha", "na7", "sisben_iv", "codigo_sisben_grupo", "estado"
 ]
 
+PARAMS_CSV = dict(
+    sep=',',
+    index_col=None,
+    skipinitialspace=True,
+    encoding='latin-1',
+    quotechar='"',
+    on_bad_lines='warn',
+    low_memory=False,
+    header=None,          # los archivos NO traen encabezado
+)
 
-def _asignar_columnas(df: pl.DataFrame, nombres_base: list[str]) -> pl.DataFrame:
+
+def _asignar_columnas(df: pd.DataFrame, nombres_base: list[str]) -> pd.DataFrame:
     """
-    Asigna nombres a las columnas. Si hay más columnas que nombres definidos,
+    Asigna nombres a las columnas del dataframe.
+    Si el archivo trae más columnas que la resolución define,
     las extra se nombran 'por_identificar_N'.
     """
     n_cols = len(df.columns)
     n_base = len(nombres_base)
-
     if n_cols > n_base:
         extra = [f"por_identificar_{i}" for i in range(1, n_cols - n_base + 1)]
         nombres = nombres_base + extra
     else:
         nombres = nombres_base[:n_cols]
+    df.columns = nombres
+    return df
 
-    return df.rename(dict(zip(df.columns, nombres)))
 
-
-def _construir_municipio(df: pl.DataFrame) -> pl.DataFrame:
+def _construir_municipio(df: pd.DataFrame) -> pd.DataFrame:
     """
     Construye municipio_afiliacion = cod_dpto + cod_mpio (con 3 dígitos).
     Ejemplo: cod_dpto=25, cod_mpio=1 → '25001'
     """
-    return df.with_columns(
-        (
-            pl.col("cod_dpto").cast(str) +
-            pl.col("cod_mpio").cast(str).str.zfill(3)
-        ).alias("municipio_afiliacion")
+    return df.assign(
+        municipio_afiliacion=df["cod_dpto"].astype(str) + df["cod_mpio"].astype(str).str.zfill(3)
     )
 
 
 def procesar_subsidiado(input_path: Path, output_path: Path) -> Path:
-    df = pl.read_csv(
+    df = pd.read_csv(
         input_path,
-        separator=",",
-        has_header=False,
-        encoding="latin1",
-        quote_char='"',
-        ignore_errors=True,
-        low_memory=False,
-        infer_schema_length=0,
+        **PARAMS_CSV
     )
     df = _asignar_columnas(df, COLS_SUBSIDIADO)
     df = _construir_municipio(df)
-    df.write_csv(output_path)
+    df.to_csv(output_path, index=False)
     return output_path
 
 
 def procesar_contributivo(input_path: Path, output_path: Path) -> Path:
-    df = pl.read_csv(
+    df = pd.read_csv(
         input_path,
-        separator=",",
-        has_header=False,
-        encoding="latin1",
-        quote_char='"',
-        ignore_errors=True,
-        low_memory=False,
-        infer_schema_length=0,
+        **PARAMS_CSV
     )
     df = _asignar_columnas(df, COLS_CONTRIBUTIVO)
     df = _construir_municipio(df)
-    df.write_csv(output_path)
+    df.to_csv(output_path, index=False)
     return output_path
